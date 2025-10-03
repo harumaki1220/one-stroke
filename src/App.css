@@ -1,0 +1,82 @@
+:root {
+  --grid-size: 5;
+  --cell-size: 60px;
+  --border-color: #555;
+  --wall-color: #333;
+  --path-color: #eee;
+  --start-color: #4a90e2;
+  --goal-color: #e24a4a;
+  --trace-color: #f5a623;
+}
+
+.puzzle-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.message-area {
+  margin: 20px;
+  padding: 10px 20px;
+  min-height: 2em;
+  font-size: 1.1em;
+  font-weight: bold;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+  grid-template-rows: repeat(var(--grid-size), var(--cell-size));
+  border: 2px solid var(--border-color);
+  background-color: #111;
+  user-select: none; 
+  -webkit-user-select: none;
+}
+
+.cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  transition: background-color 0.1s ease;
+  position: relative;
+}
+
+.cell.wall { background-color: var(--wall-color); }
+.cell.path { background-color: var(--path-color); }
+.cell.start { background-color: var(--start-color); }
+.cell.goal { background-color: var(--goal-color); }
+.cell.traced { background-color: var(--trace-color); }
+
+.cell.traced::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30%;
+  height: 30%;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.reset-button {
+  margin-top: 20px;
+  padding: 10px 25px;
+  font-size: 1em;
+  font-weight: bold;
+  color: white;
+  background-color: #333;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.reset-button:hover {
+  background-color: #555;
+}

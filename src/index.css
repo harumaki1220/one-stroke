@@ -1,0 +1,23 @@
+html {
+  /* スクロールバーが後から出現してレイアウトがズレるのを防ぐ */
+  overflow-y: scroll; 
+}
+
+body {
+  /* ブラウザが標準でつける余白をリセット */
+  margin: 0; 
+  
+  /* Flexboxを使って中身を中央に配置する設定 */
+  display: flex;
+  justify-content: center; /* 水平方向の中央揃え */
+  align-items: center;     /* 垂直方向の中央揃え */
+  
+  /* 画面の高さいっぱいに広げて中央揃えを有効にする */
+  min-height: 100vh;
+  
+  /* 基本のフォントを設定 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* 背景色を少しつけておくと分かりやすい */
+  background-color: #f7f7f7; 
+}
