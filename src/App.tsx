@@ -5,7 +5,6 @@ import { generatePuzzle } from './puzzleGenerator';
 type CellType = 0 | 1 | 2 | 3;
 type Coords = { row: number; col: number };
 
-// 難易度の選択肢を定義
 const DIFFICULTY_LEVELS = [
   { name: 'かんたん', size: 5 },
   { name: 'ふつう', size: 7 },
