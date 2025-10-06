@@ -9,7 +9,7 @@ on:
   # Actionsタブから手動で実行することも可能にする
   workflow_dispatch:
 
-# ジョブの権限を設定
+# ジョブ全体の権限を設定
 permissions:
   contents: read
   pages: write
@@ -17,11 +17,11 @@ permissions:
 
 # ジョブを定義
 jobs:
-  # ビルドとテスト用のジョブ
+  # ビルドと品質チェック用のジョブ
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. リポジトリのコードをチェックアウト
+      # 1. リポジトリのコードをチェックアウト（最新版の v4 を使用）
       - name: Checkout
         uses: actions/checkout@v4
       
@@ -32,7 +32,8 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      # 3. 依存パッケージをインストール
+      # 3. 依存パッケージを確実にインストール
+      # CI環境では 'npm install' より 'npm ci' が推奨されます
       - name: Install dependencies
         run: npm ci
 
@@ -40,20 +41,19 @@ jobs:
       - name: Run Lint
         run: npm run lint
 
-      # 5. プロジェクトをビルド（ビルド時に型チェックも走る）
+      # 5. プロジェクトをビルド（ビルド時に型チェックも実行されます）
       - name: Build
         run: npm run build
 
-      # 6. ビルド成果物をアップロード
+      # 6. ビルド成果物をアップロードして、次のジョブで使えるようにする
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
 
-  # デプロイ用のジョブ
+  # デプロイ専門のジョブ
   deploy:
-    # ★★★ この行が重要 ★★★
-    # buildジョブが成功した場合にのみ、このジョブが実行される
+    # 'build' ジョブが成功した場合にのみ、このジョブが実行される
     needs: build
     
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # 7. ビルド成果物をGitHub Pagesにデプロイ
+      # 7. アップロードされた成果物をGitHub Pagesにデプロイ
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
