@@ -1,15 +1,15 @@
 # ワークフローの名前
-name: Deploy to GitHub Pages
+name: CI/CD
 
 # ワークフローが実行されるタイミング
 on:
   # mainブランチにpushされた時
   push:
     branches: [ "main" ]
-  # GitHubのActionsタブから手動で実行することも可能にする
+  # Actionsタブから手動で実行することも可能にする
   workflow_dispatch:
 
-# 実行するジョブの権限を設定
+# ジョブの権限を設定
 permissions:
   contents: read
   pages: write
@@ -17,7 +17,7 @@ permissions:
 
 # ジョブを定義
 jobs:
-  # ビルド用のジョブ
+  # ビルドとテスト用のジョブ
   build:
     runs-on: ubuntu-latest
     steps:
@@ -25,22 +25,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      # 2. Node.js環境をセットアップ
+      # 2. Node.js環境をセットアップ（キャッシュも有効化）
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # あなたのプロジェクトに合ったバージョンを指定
+          node-version: 20
           cache: 'npm'
 
       # 3. 依存パッケージをインストール
       - name: Install dependencies
         run: npm ci
 
-      # 4. プロジェクトをビルド
+      # 4. コードの品質をチェック (Lint)
+      - name: Run Lint
+        run: npm run lint
+
+      # 5. プロジェクトをビルド（ビルド時に型チェックも走る）
       - name: Build
         run: npm run build
 
-      # 5. ビルド成果物をアップロード
+      # 6. ビルド成果物をアップロード
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -48,15 +52,16 @@ jobs:
 
   # デプロイ用のジョブ
   deploy:
-    # buildジョブが完了するまで待つ
+    # ★★★ この行が重要 ★★★
+    # buildジョブが成功した場合にのみ、このジョブが実行される
     needs: build
+    
     runs-on: ubuntu-latest
-    # デプロイ環境を設定
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # 6. ビルド成果物をGitHub Pagesにデプロイ
+      # 7. ビルド成果物をGitHub Pagesにデプロイ
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
