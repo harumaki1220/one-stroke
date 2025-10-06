@@ -1,9 +1,12 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, type MouseEvent } from 'react';
 import './App.css';
 import { generatePuzzle } from './puzzleGenerator';
+import { getCellsOnLine } from './lineTracer';
 
 type CellType = 0 | 1 | 2 | 3;
 type Coords = { row: number; col: number };
+
+const CELL_SIZE = 60;
 
 const DIFFICULTY_LEVELS = [
   { name: 'かんたん', size: 5 },
@@ -19,7 +22,6 @@ function App() {
   const [isLocked, setIsLocked] = useState(false);
   const [puzzleSize, setPuzzleSize] = useState(7);
 
-  // パズル生成関数を、現在のpuzzleSizeに依存させる
   const createNewPuzzle = useCallback(() => {
     document.documentElement.style.setProperty('--grid-size', String(puzzleSize));
     const newGrid = generatePuzzle(puzzleSize, puzzleSize);
@@ -30,11 +32,9 @@ function App() {
     setIsLocked(false);
   }, [puzzleSize]);
 
-  // puzzleSizeが変更されたとき、または初回読み込み時に新しいパズルを生成
   useEffect(() => {
     createNewPuzzle();
-  }, [createNewPuzzle]); // createNewPuzzleに依存させることで、puzzleSizeの変更を検知
-
+  }, [createNewPuzzle]);
 
   const totalPathCells = useMemo(() => {
     if (grid.length === 0) return 0;
@@ -53,44 +53,11 @@ function App() {
 
   const handleMouseDown = useCallback((row: number, col: number) => {
     if (isLocked || !grid[row] || grid[row][col] !== 2) return;
-    
     setPath([]);
     setMessage('なぞり中...');
     setIsDrawing(true);
     setPath([{ row, col }]);
   }, [isLocked, grid]);
-  
-  const handleMouseEnter = useCallback((row: number, col: number) => {
-    if (isLocked || !isDrawing || !grid[row]) return;
-
-    if (path.length >= 2) {
-      const secondToLastPos = path[path.length - 2];
-      if (secondToLastPos.row === row && secondToLastPos.col === col) {
-        setPath(prevPath => prevPath.slice(0, -1));
-        return;
-      }
-    }
-
-    const lastPos = path[path.length - 1];
-    const isAdjacent = Math.abs(row - lastPos.row) + Math.abs(col - lastPos.col) === 1;
-    if (!isAdjacent) return;
-
-    const cellType = grid[row][col];
-    const cellKey = `${row}-${col}`;
-
-    if (cellType === 0 || tracedCells.has(cellKey)) {
-      return;
-    }
-    
-    const newPath = [...path, { row, col }];
-    setPath(newPath);
-
-    if (cellType === 3 && (newPath.length - 1) === totalPathCells) {
-      setMessage('🎉 クリア！おめでとうございます！ 🎉');
-      setIsDrawing(false);
-      setIsLocked(true);
-    }
-  }, [isDrawing, path, grid, tracedCells, totalPathCells]);
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing) {
@@ -100,9 +67,57 @@ function App() {
     }
   }, [isDrawing]);
 
+  const handleMouseMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || path.length === 0) return;
+    const gridRect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - gridRect.left;
+    const mouseY = e.clientY - gridRect.top;
+    const lastPos = path[path.length - 1];
+    const cellsToTrace = getCellsOnLine(lastPos, { row: mouseY, col: mouseX }, CELL_SIZE);
+    let newPath = [...path];
+    for (const cell of cellsToTrace) {
+      if (!grid[cell.row] || grid[cell.row][cell.col] === undefined) continue;
+      const currentLastPos = newPath[newPath.length - 1];
+      const cellType = grid[cell.row][cell.col];
+      
+      if (newPath.length >= 2) {
+        const secondToLastPos = newPath[newPath.length - 2];
+        if (secondToLastPos.row === cell.row && secondToLastPos.col === cell.col) {
+          newPath = newPath.slice(0, -1);
+          continue;
+        }
+      }
+      
+      const isAdjacent = Math.abs(cell.row - currentLastPos.row) + Math.abs(cell.col - currentLastPos.col) === 1;
+      const isAlreadyTraced = newPath.some(p => p.row === cell.row && p.col === cell.col);
+
+      if (isAdjacent && !isAlreadyTraced && cellType !== 0) {
+        
+        if (cellType === 3) {
+          if (newPath.length !== totalPathCells) {
+            continue;
+          }
+        }
+        
+        newPath.push(cell);
+
+        if (cellType === 3 && (newPath.length - 1) === totalPathCells) {
+          setPath(newPath);
+          setMessage('🎉 クリア！おめでとうございます！ 🎉');
+          setIsDrawing(false);
+          setIsLocked(true);
+          return;
+        }
+      }
+    }
+    setPath(newPath);
+  }, [isDrawing, path, grid, totalPathCells]);
+  
   useEffect(() => {
     window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
   }, [handleMouseUp]);
 
   if (grid.length === 0) return <div>パズルを生成中...</div>;
@@ -114,7 +129,6 @@ function App() {
         {DIFFICULTY_LEVELS.map(level => (
           <button
             key={level.name}
-            // 現在の難易度と同じボタンは見た目を変える
             className={`difficulty-button ${puzzleSize === level.size ? 'active' : ''}`}
             onClick={() => setPuzzleSize(level.size)}
           >
@@ -123,32 +137,34 @@ function App() {
         ))}
       </div>
       <div className="message-area">{message}</div>
-      <div className={`grid ${isLocked ? 'locked' : ''}`}>
+      <div
+        className={`grid ${isLocked ? 'locked' : ''}`}
+        onMouseMove={handleMouseMove}
+      >
         {grid.map((row, rowIndex) =>
           row.map((cellType, colIndex) => {
             const cellKey = `${rowIndex}-${colIndex}`;
             const isTraced = tracedCells.has(cellKey);
-            
             let className = 'cell';
             if (cellType === 0) className += ' wall';
             if (cellType === 1) className += ' path';
             if (cellType === 2) className += ' start';
             if (cellType === 3) className += ' goal';
-            
             if (isTraced) className += ' traced';
-
+            
             return (
               <div
                 key={cellKey}
                 className={className}
                 onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
-                onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
               ></div>
             );
           })
         )}
       </div>
-      <button onClick={createNewPuzzle} className="reset-button">次のパズルへ</button>
+      <button onClick={createNewPuzzle} className="reset-button">
+        次のパズルへ
+      </button>
     </div>
   );
 }
