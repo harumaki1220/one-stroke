@@ -21,6 +21,24 @@ function App() {
   const [message, setMessage] = useState('スタートマスからドラッグしてゴールを目指そう！');
   const [isLocked, setIsLocked] = useState(false);
   const [puzzleSize, setPuzzleSize] = useState(7);
+  const [time, setTime] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
+
+  useEffect(() => {
+    let interval: number | undefined;
+
+    if (timerActive) {
+      interval = setInterval(() => {
+        setTime(prevTime => prevTime + 1);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [timerActive]);
 
   const createNewPuzzle = useCallback(() => {
     document.documentElement.style.setProperty('--grid-size', String(puzzleSize));
@@ -30,6 +48,8 @@ function App() {
     setPath([]);
     setMessage('スタートマスからドラッグしてゴールを目指そう！');
     setIsLocked(false);
+    setTime(0);
+    setTimerActive(false);
   }, [puzzleSize]);
 
   useEffect(() => {
@@ -51,19 +71,24 @@ function App() {
     return cellSet;
   }, [path]);
 
+
   const handleMouseDown = useCallback((row: number, col: number) => {
     if (isLocked || !grid[row] || grid[row][col] !== 2) return;
     setPath([]);
     setMessage('なぞり中...');
     setIsDrawing(true);
     setPath([{ row, col }]);
+    setTime(0);
+    setTimerActive(true);
   }, [isLocked, grid]);
+
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing) {
       setPath([]);
       setIsDrawing(false);
       setMessage('失敗！もう一度スタートからどうぞ。');
+      setTimerActive(false);
     }
   }, [isDrawing]);
 
@@ -79,7 +104,6 @@ function App() {
       if (!grid[cell.row] || grid[cell.row][cell.col] === undefined) continue;
       const currentLastPos = newPath[newPath.length - 1];
       const cellType = grid[cell.row][cell.col];
-      
       if (newPath.length >= 2) {
         const secondToLastPos = newPath[newPath.length - 2];
         if (secondToLastPos.row === cell.row && secondToLastPos.col === cell.col) {
@@ -87,31 +111,28 @@ function App() {
           continue;
         }
       }
-      
       const isAdjacent = Math.abs(cell.row - currentLastPos.row) + Math.abs(cell.col - currentLastPos.col) === 1;
       const isAlreadyTraced = newPath.some(p => p.row === cell.row && p.col === cell.col);
 
       if (isAdjacent && !isAlreadyTraced && cellType !== 0) {
-        
-        if (cellType === 3) {
-          if (newPath.length !== totalPathCells) {
+        if (cellType === 3 && newPath.length !== totalPathCells) {
             continue;
-          }
         }
-        
         newPath.push(cell);
+
 
         if (cellType === 3 && (newPath.length - 1) === totalPathCells) {
           setPath(newPath);
-          setMessage('🎉 クリア！おめでとうございます！ 🎉');
+          setMessage(`🎉 クリア！タイム: ${time}秒 🎉`);
           setIsDrawing(false);
           setIsLocked(true);
+          setTimerActive(false);
           return;
         }
       }
     }
     setPath(newPath);
-  }, [isDrawing, path, grid, totalPathCells]);
+  }, [isDrawing, path, grid, totalPathCells, time]);
   
   useEffect(() => {
     window.addEventListener('mouseup', handleMouseUp);
@@ -136,11 +157,11 @@ function App() {
           </button>
         ))}
       </div>
+      <div className="status-bar">
+        <div className="timer">タイム: {time}秒</div>
+      </div>
       <div className="message-area">{message}</div>
-      <div
-        className={`grid ${isLocked ? 'locked' : ''}`}
-        onMouseMove={handleMouseMove}
-      >
+      <div className={`grid ${isLocked ? 'locked' : ''}`} onMouseMove={handleMouseMove}>
         {grid.map((row, rowIndex) =>
           row.map((cellType, colIndex) => {
             const cellKey = `${rowIndex}-${colIndex}`;
@@ -162,9 +183,7 @@ function App() {
           })
         )}
       </div>
-      <button onClick={createNewPuzzle} className="reset-button">
-        次のパズルへ
-      </button>
+      <button onClick={createNewPuzzle} className="reset-button">次のパズルへ</button>
     </div>
   );
 }

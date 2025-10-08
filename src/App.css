@@ -81,8 +81,6 @@
   background-color: #555;
 }
 
-
-/* 2回通るマスの【初期状態】 */
 .cell.pass-twice {
   background-color: #e0e0e0;
   position: relative;
@@ -100,13 +98,11 @@
   transition: transform 0.2s;
 }
 
-/* 1回通った後の【中間状態】 */
 .cell.pass-twice.first-pass {
   background-color: var(--trace-color);
   opacity: 0.7;
 }
 
-/* 2回通って【完了した最終状態】 */
 .cell.pass-twice.traced:not(.first-pass) {
   background-color: var(--trace-color);
   opacity: 1;
@@ -139,7 +135,6 @@
   border-color: #999;
 }
 
-/* 選択されている難易度ボタンのスタイル */
 .difficulty-button.active {
   color: white;
   background-color: #333;
