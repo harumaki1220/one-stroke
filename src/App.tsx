@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback, useEffect, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import './App.css';
-import { generatePuzzle } from './puzzleGenerator';
 import { getCellsOnLine } from './lineTracer';
+import { generatePuzzle } from './puzzleGenerator';
 
 type CellType = 0 | 1 | 2 | 3;
 type Coords = { row: number; col: number };
@@ -29,7 +29,7 @@ function App() {
 
     if (timerActive) {
       interval = setInterval(() => {
-        setTime(prevTime => prevTime + 1);
+        setTime((prevTime) => prevTime + 1);
       }, 1000);
     }
 
@@ -59,29 +59,32 @@ function App() {
   const totalPathCells = useMemo(() => {
     if (grid.length === 0) return 0;
     let count = 0;
-    grid.forEach(row => row.forEach(cell => {
-      if (cell === 1 || cell === 3) count++;
-    }));
+    grid.forEach((row) =>
+      row.forEach((cell) => {
+        if (cell === 1 || cell === 3) count++;
+      }),
+    );
     return count;
   }, [grid]);
 
   const tracedCells = useMemo(() => {
     const cellSet = new Set<string>();
-    path.forEach(p => cellSet.add(`${p.row}-${p.col}`));
+    path.forEach((p) => cellSet.add(`${p.row}-${p.col}`));
     return cellSet;
   }, [path]);
 
-
-  const handleMouseDown = useCallback((row: number, col: number) => {
-    if (isLocked || !grid[row] || grid[row][col] !== 2) return;
-    setPath([]);
-    setMessage('なぞり中...');
-    setIsDrawing(true);
-    setPath([{ row, col }]);
-    setTime(0);
-    setTimerActive(true);
-  }, [isLocked, grid]);
-
+  const handleMouseDown = useCallback(
+    (row: number, col: number) => {
+      if (isLocked || !grid[row] || grid[row][col] !== 2) return;
+      setPath([]);
+      setMessage('なぞり中...');
+      setIsDrawing(true);
+      setPath([{ row, col }]);
+      setTime(0);
+      setTimerActive(true);
+    },
+    [isLocked, grid],
+  );
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing) {
@@ -92,48 +95,51 @@ function App() {
     }
   }, [isDrawing]);
 
-  const handleMouseMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    if (!isDrawing || path.length === 0) return;
-    const gridRect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - gridRect.left;
-    const mouseY = e.clientY - gridRect.top;
-    const lastPos = path[path.length - 1];
-    const cellsToTrace = getCellsOnLine(lastPos, { row: mouseY, col: mouseX }, CELL_SIZE);
-    let newPath = [...path];
-    for (const cell of cellsToTrace) {
-      if (!grid[cell.row] || grid[cell.row][cell.col] === undefined) continue;
-      const currentLastPos = newPath[newPath.length - 1];
-      const cellType = grid[cell.row][cell.col];
-      if (newPath.length >= 2) {
-        const secondToLastPos = newPath[newPath.length - 2];
-        if (secondToLastPos.row === cell.row && secondToLastPos.col === cell.col) {
-          newPath = newPath.slice(0, -1);
-          continue;
-        }
-      }
-      const isAdjacent = Math.abs(cell.row - currentLastPos.row) + Math.abs(cell.col - currentLastPos.col) === 1;
-      const isAlreadyTraced = newPath.some(p => p.row === cell.row && p.col === cell.col);
-
-      if (isAdjacent && !isAlreadyTraced && cellType !== 0) {
-        if (cellType === 3 && newPath.length !== totalPathCells) {
+  const handleMouseMove = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (!isDrawing || path.length === 0) return;
+      const gridRect = e.currentTarget.getBoundingClientRect();
+      const mouseX = e.clientX - gridRect.left;
+      const mouseY = e.clientY - gridRect.top;
+      const lastPos = path[path.length - 1];
+      const cellsToTrace = getCellsOnLine(lastPos, { row: mouseY, col: mouseX }, CELL_SIZE);
+      let newPath = [...path];
+      for (const cell of cellsToTrace) {
+        if (!grid[cell.row] || grid[cell.row][cell.col] === undefined) continue;
+        const currentLastPos = newPath[newPath.length - 1];
+        const cellType = grid[cell.row][cell.col];
+        if (newPath.length >= 2) {
+          const secondToLastPos = newPath[newPath.length - 2];
+          if (secondToLastPos.row === cell.row && secondToLastPos.col === cell.col) {
+            newPath = newPath.slice(0, -1);
             continue;
+          }
         }
-        newPath.push(cell);
+        const isAdjacent =
+          Math.abs(cell.row - currentLastPos.row) + Math.abs(cell.col - currentLastPos.col) === 1;
+        const isAlreadyTraced = newPath.some((p) => p.row === cell.row && p.col === cell.col);
 
+        if (isAdjacent && !isAlreadyTraced && cellType !== 0) {
+          if (cellType === 3 && newPath.length !== totalPathCells) {
+            continue;
+          }
+          newPath.push(cell);
 
-        if (cellType === 3 && (newPath.length - 1) === totalPathCells) {
-          setPath(newPath);
-          setMessage(`🎉 クリア！タイム: ${time}秒 🎉`);
-          setIsDrawing(false);
-          setIsLocked(true);
-          setTimerActive(false);
-          return;
+          if (cellType === 3 && newPath.length - 1 === totalPathCells) {
+            setPath(newPath);
+            setMessage(`🎉 クリア！タイム: ${time}秒 🎉`);
+            setIsDrawing(false);
+            setIsLocked(true);
+            setTimerActive(false);
+            return;
+          }
         }
       }
-    }
-    setPath(newPath);
-  }, [isDrawing, path, grid, totalPathCells, time]);
-  
+      setPath(newPath);
+    },
+    [isDrawing, path, grid, totalPathCells, time],
+  );
+
   useEffect(() => {
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -147,7 +153,7 @@ function App() {
     <div className="puzzle-container">
       <h1>一筆書きパズル</h1>
       <div className="difficulty-selector">
-        {DIFFICULTY_LEVELS.map(level => (
+        {DIFFICULTY_LEVELS.map((level) => (
           <button
             key={level.name}
             className={`difficulty-button ${puzzleSize === level.size ? 'active' : ''}`}
@@ -172,7 +178,7 @@ function App() {
             if (cellType === 2) className += ' start';
             if (cellType === 3) className += ' goal';
             if (isTraced) className += ' traced';
-            
+
             return (
               <div
                 key={cellKey}
@@ -180,10 +186,12 @@ function App() {
                 onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
               ></div>
             );
-          })
+          }),
         )}
       </div>
-      <button onClick={createNewPuzzle} className="reset-button">次のパズルへ</button>
+      <button onClick={createNewPuzzle} className="reset-button">
+        次のパズルへ
+      </button>
     </div>
   );
 }
